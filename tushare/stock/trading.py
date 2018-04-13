@@ -10,6 +10,7 @@ from __future__ import division
 
 import time
 import json
+import random
 import lxml.html
 from lxml import etree
 import pandas as pd
@@ -64,7 +65,8 @@ def get_hist_data(code=None, start=None, end=None,
     for _ in range(retry_count):
         time.sleep(pause)
         try:
-            request = Request(url)
+            headers = {'User-Agent': _get_user_agent()}
+            request = Request(url, headers=headers)
             lines = urlopen(request, timeout = 10).read()
             if len(lines) < 15: #no data
                 return None
@@ -108,8 +110,10 @@ def _parsing_dayprice_json(types=None, page=1):
         DataFrame 当日所有股票交易数据(DataFrame)
     """
     ct._write_console()
+    headers = {'User-Agent': _get_user_agent()}
     request = Request(ct.SINA_DAY_PRICE_URL%(ct.P_TYPE['http'], ct.DOMAINS['vsf'],
-                                 ct.PAGES['jv'], types, page))
+                                 ct.PAGES['jv'], types, page),
+                     headers=headers)
     text = urlopen(request, timeout=10).read()
     if text == 'null':
         return None
@@ -170,7 +174,8 @@ def get_tick_data(code=None, date=None, retry_count=3, pause=0.001,
                 df = pd.read_excel(url[src])
                 df.columns = ct.TICK_COLUMNS
             else:
-                re = Request(url[src])
+                headers = {'User-Agent': _get_user_agent()}
+                re = Request(url[src], headers=headers)
                 lines = urlopen(re, timeout=10).read()
                 lines = lines.decode('GBK') 
                 if len(lines) < 20:
@@ -209,8 +214,9 @@ def get_sina_dd(code=None, date=None, vol=400, retry_count=3, pause=0.001):
     for _ in range(retry_count):
         time.sleep(pause)
         try:
+            headers = {'User-Agent': _get_user_agent()}
             re = Request(ct.SINA_DD % (ct.P_TYPE['http'], ct.DOMAINS['vsf'], ct.PAGES['sinadd'],
-                                symbol, vol, date))
+                                symbol, vol, date),headers=headers)
             lines = urlopen(re, timeout=10).read()
             lines = lines.decode('GBK') 
             if len(lines) < 100:
@@ -248,10 +254,11 @@ def get_today_ticks(code=None, retry_count=3, pause=0.001):
     date = du.today()
     for _ in range(retry_count):
         time.sleep(pause)
-        try:
+        try:    
+            headers = {'User-Agent': _get_user_agent()}
             request = Request(ct.TODAY_TICKS_PAGE_URL % (ct.P_TYPE['http'], ct.DOMAINS['vsf'],
                                                        ct.PAGES['jv'], date,
-                                                       symbol))
+                                                       symbol), headers=headers)
             data_str = urlopen(request, timeout=10).read()
             data_str = data_str.decode('GBK')
             data_str = data_str[1:-1]
@@ -363,8 +370,9 @@ def get_realtime_quotes(symbols=None):
         symbols_list = ct._code_to_symbol(symbols)
         
     symbols_list = symbols_list[:-1] if len(symbols_list) > 8 else symbols_list 
+    headers = {'User-Agent': _get_user_agent()}
     request = Request(ct.LIVE_DATA_URL%(ct.P_TYPE['http'], ct.DOMAINS['sinahq'],
-                                                _random(), symbols_list))
+                                                _random(), symbols_list), headers=headers)
     text = urlopen(request,timeout=10).read()
     text = text.decode('GBK')
     reg = re.compile(r'\="(.*?)\";')
@@ -505,8 +513,9 @@ def get_h_data(code, start=None, end=None, autype='qfq',
 
 def _parase_fq_factor(code, start, end):
     symbol = ct._code_to_symbol(code)
+    headers = {'User-Agent': _get_user_agent()}
     request = Request(ct.HIST_FQ_FACTOR_URL%(ct.P_TYPE['http'],
-                                             ct.DOMAINS['vsf'], symbol))
+                                             ct.DOMAINS['vsf'], symbol), headers=headers)
     text = urlopen(request, timeout=10).read()
     text = text[1:len(text)-1]
     text = text.decode('utf-8') if ct.PY3 else text
@@ -537,7 +546,8 @@ def _parse_fq_data(url, index, retry_count, pause):
     for _ in range(retry_count):
         time.sleep(pause)
         try:
-            request = Request(url)
+            headers = {'User-Agent': _get_user_agent()}
+            request = Request(url, headers=headers)
             text = urlopen(request, timeout=10).read()
             text = text.decode('GBK')
             html = lxml.html.parse(StringIO(text))
@@ -586,8 +596,10 @@ def get_index():
           volume:成交量(手)
           amount:成交金额（亿元）
     """
+    headers = {'User-Agent': _get_user_agent()}
     request = Request(ct.INDEX_HQ_URL%(ct.P_TYPE['http'],
-                                             ct.DOMAINS['sinahq']))
+                                             ct.DOMAINS['sinahq']),
+                     headers=headers)
     text = urlopen(request, timeout=10).read()
     text = text.decode('GBK')
     text = text.replace('var hq_str_sh', '').replace('var hq_str_sz', '')
@@ -710,8 +722,9 @@ def _get_k_data(url, dataflag='',
                 pause=0.001):
     for _ in range(retry_count):
             time.sleep(pause)
-            try:
-                request = Request(url)
+            try:        
+                headers = {'User-Agent': _get_user_agent()}
+                request = Request(url, headers=headers)
                 lines = urlopen(request, timeout = 10).read()
                 if len(lines) < 100: #no data
                     return None
@@ -1163,10 +1176,10 @@ def factor_shares(code):
 
 
 def _random(n=13):
-    from random import randint
     start = 10**(n-1)
     end = (10**n)-1
-    return str(randint(start, end))
+    return str(random.randint(start, end))
 
-
+def _get_user_agent():
+    return random.choice(ct.USER_AGENTS)
 
